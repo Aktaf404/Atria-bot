@@ -1,0 +1,13 @@
+# kredensial asli (jangan di-commit)
+akun.txt
+api.txt
+success_akun.txt
+failed_akun.txt
+
+# log
+glogin.log
+run.log
+
+# python
+__pycache__/
+*.pyc

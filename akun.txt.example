@@ -1,0 +1,5 @@
+# Contoh isi akun.txt — ganti dengan akun GSuite asli
+# Format: email:password  (sebaris satu akun)
+# akun yang sudah diproses otomatis dihapus dari file ini.
+contoh1@domain.com:password1
+contoh2@domain.com:password2
