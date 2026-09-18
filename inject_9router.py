@@ -1,4 +1,4 @@
-"""Inject API keys to 9Router + test (author: Rofi Indistira)."""
+"""Inject keys to 9Router + test (auto-detect node) (author: Rofi Indistira)."""
 import json
 import sys
 import time
@@ -8,18 +8,32 @@ import httpx
 
 BASE = Path(__file__).parent
 API = "http://localhost:20128"
-PROVIDER = "openai-compatible-responses-06f3de3d-a8d0-41bd-a1a0-b1617e8b9f78"
 MODEL = "Atria-Dawn-Preview"
 
-PSD = {
-    "prefix": "at",
-    "apiType": "responses",
-    "baseUrl": "http://api.atria-asi.ai/v1",
-    "nodeName": "Atria",
-    "connectionProxyEnabled": False,
-    "connectionProxyUrl": "",
-    "connectionNoProxy": "",
-}
+
+def find_atria_node(c: httpx.Client):
+    """Auto-detect the Atria node among 9Router provider-nodes."""
+    r = c.get("/api/provider-nodes")
+    nodes = r.json().get("nodes", []) if r.status_code == 200 else []
+    for n in nodes:
+        burl = (n.get("baseUrl") or "").lower()
+        name = (n.get("name") or "").lower()
+        prefix = (n.get("prefix") or "").lower()
+        if "atria" in burl or "atria" in name or prefix == "at":
+            return n
+    return None
+
+
+def build_psd(node: dict):
+    return {
+        "prefix": node.get("prefix", ""),
+        "apiType": node.get("apiType", "responses"),
+        "baseUrl": node.get("baseUrl", ""),
+        "nodeName": node.get("name", ""),
+        "connectionProxyEnabled": False,
+        "connectionProxyUrl": "",
+        "connectionNoProxy": "",
+    }
 
 
 def load_pairs(path: Path):
@@ -46,10 +60,20 @@ def main():
         return
 
     with httpx.Client(base_url=API, timeout=30) as c:
+        node = find_atria_node(c)
+        if not node:
+            print("node Atria tidak ditemukan di /api/provider-nodes")
+            print("buat node Atria dulu di dashboard 9Router, lalu coba lagi")
+            return
+        provider = node["id"]
+        psd = build_psd(node)
+        print(f"node terdeteksi: {node.get('name')} ({provider})")
+        print(f"  baseUrl: {psd['baseUrl']}  prefix: {psd['prefix']}  apiType: {psd['apiType']}")
+
         cur = c.get("/api/providers").json().get("connections", [])
-        mine = [x for x in cur if x.get("provider") == PROVIDER]
+        mine = [x for x in cur if x.get("provider") == provider]
         mine_names = {x.get("name") for x in mine}
-        print(f"koneksi {PROVIDER} sekarang: {len(mine)}")
+        print(f"koneksi {provider} sekarang: {len(mine)}")
 
         # add only the ones not connected yet
         new = 0
@@ -58,13 +82,13 @@ def main():
                 print(f"  lewati {email} (sudah ada)")
                 continue
             body = {
-                "provider": PROVIDER,
+                "provider": provider,
                 "apiKey": key,
                 "name": email,
                 "priority": 1,
                 "testStatus": "unknown",
                 "defaultModel": MODEL,
-                "providerSpecificData": PSD,
+                "providerSpecificData": psd,
             }
             r = c.post("/api/providers", json=body)
             ok = r.status_code in (200, 201)
@@ -76,7 +100,7 @@ def main():
 
         # test every connection of this provider
         cur2 = c.get("/api/providers").json().get("connections", [])
-        mine2 = [x for x in cur2 if x.get("provider") == PROVIDER]
+        mine2 = [x for x in cur2 if x.get("provider") == provider]
         ok = fail = 0
         for x in mine2:
             r = c.post(f"/api/providers/{x['id']}/test", timeout=90)

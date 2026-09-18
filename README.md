@@ -37,8 +37,10 @@ pip install -r requirements.txt
 ```
 
 3. 9Router Proxy kamu sudah jalan di `http://localhost:20128` dengan node Atria
-   (`openai-compatible-responses-...`) yang `baseUrl`-nya `http://api.atria-asi.ai/v1`.
-   Kalau node-nya beda ID, ubah `PROVIDER` di `inject_9router.py`.
+   (tampilan dashboard `Providers`). Script **auto-detect** node Atria dari
+   `/api/provider-nodes` (dicocokkan dari `baseUrl`/`name`/`prefix` yang mengandung
+   "atria"), jadi tidak perlu edit ID node.
+   Kalau port 9Router beda, ubah `API = "http://localhost:20128"` di `inject_9router.py`.
 
 ## Cara Pakai
 
