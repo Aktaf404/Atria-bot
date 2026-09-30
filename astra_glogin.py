@@ -307,6 +307,13 @@ async def main():
     results = []
     lock = asyncio.Lock()
 
+    # Pre-extract addons to prevent race conditions during parallel processing
+    try:
+        async with AsyncCamoufox(headless=True, humanize=True):
+            pass
+    except Exception:
+        pass
+
     # process in batches of N parallel windows
     for i in range(0, len(todo), args.workers):
         batch = todo[i:i + args.workers]
